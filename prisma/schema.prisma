@@ -9,15 +9,13 @@ datasource db {
 
 
 
-// model Model {
-//   id          Int      @id @default(autoincrement())
-//   name        String   @unique
-//   provider    String
-//   providerUrl String
-//   type        String
-//   projectId   String
-//   Project    Project? @relation(fields: [projectId], references: [id])
-// }
+model Model {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  provider    String
+  providerUrl String
+  type        String
+ }
 
 // model Project {
 //   id          String   @id @default(cuid())
