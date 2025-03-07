@@ -45,21 +45,19 @@ datasource db {
 //   User         User[]
 // }
 
-// model Usage {
-//   id           Int      @id @default(autoincrement())
-//   tenantId     String
-//   userId       String
-//   projectId    String
-//   apiKeyId     String
-//   inputTokens  Int
-//   outputTokens Int
-//   cost         Float
-//   createdAt    DateTime @default(now())
-//   ApiKey       ApiKey   @relation(fields: [apiKeyId], references: [id])
-//   Project      Project  @relation(fields: [projectId], references: [id])
-//   Tenant       Tenant   @relation(fields: [tenantId], references: [id])
-//   User         User     @relation(fields: [userId], references: [id])
-// }
+model Usage {
+  id           Int      @id @default(autoincrement())
+  teamId     String
+  userId       String
+  apiKeyId     String
+  inputTokens  Int
+  outputTokens Int
+  cost         Float
+  createdAt    DateTime @default(now())
+  ApiKey       ApiKey   @relation(fields: [apiKeyId], references: [id])
+  Team       Team   @relation(fields: [teamId], references: [id])
+  User         User     @relation(fields: [userId], references: [id])
+}
 
 
 // model ApiKey {
@@ -137,6 +135,7 @@ model User {
   sessions    Session[]
   invitations Invitation[]
   apiKeys         ApiKey[]
+  Usage        Usage[]
 }
 
 model Team {
@@ -152,6 +151,7 @@ model Team {
   members         TeamMember[]
   invitations     Invitation[]
   apiKeys         ApiKey[]
+  Usage        Usage[]
 
   @@index([billingId])
 }
@@ -213,6 +213,8 @@ model ApiKey {
 
   team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+   Usage     Usage[]
 
   @@index([teamId])
 }

@@ -45,7 +45,7 @@ const handleGET = async (req: NextApiRequest, res: NextApiResponse) => {
 
   throwIfNotAllowed(user, 'team_api_key', 'read');
 
-  const apiKeys = await fetchApiKeys(user.team.id);
+  const apiKeys = await fetchApiKeys(user.team.id, user.id);
 
   recordMetric('apikey.fetched');
 

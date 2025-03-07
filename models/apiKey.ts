@@ -34,10 +34,11 @@ export const createApiKey = async (params: CreateApiKeyParams) => {
   return apiKey;
 };
 
-export const fetchApiKeys = async (teamId: string) => {
+export const fetchApiKeys = async (teamId: string, userId: string) => {
   return prisma.apiKey.findMany({
     where: {
       teamId,
+      userId
     },
     select: {
       id: true,
@@ -63,6 +64,7 @@ export const getApiKey = async (apiKey: string) => {
     select: {
       id: true,
       teamId: true,
+      userId: true
     },
   });
 };
@@ -75,6 +77,7 @@ export const getApiKeyById = async (id: string) => {
     select: {
       id: true,
       teamId: true,
+      userId: true
     },
   });
 };
