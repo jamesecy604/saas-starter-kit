@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { OpenAI } from 'openai';
-import {prisma} from '@/lib/prisma';
+import { prisma } from '@/lib/prisma';
 import { createHash } from 'crypto';
 
 const hashApiKey = (apiKey: string) => {
@@ -24,11 +24,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const hashedApiKey = hashApiKey(apiKeyValue);
 
     const apiKeyRecord = await prisma.apiKey.findUnique({
-      where: { hashedKey: hashedApiKey, teamId: teamId as string }
+      where: { hashedKey: hashedApiKey }
     });
 
     if (!apiKeyRecord) {
-      return res.status(401).json({ error: 'Invalid API key or team ID' });
+      return res.status(401).json({ error: 'Invalid API key' });
     }
 
     const user = await prisma.user.findUnique({
@@ -37,6 +37,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (!user) {
       return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    // Check if the user is a member of the team
+    const teamMember = await prisma.teamMember.findFirst({
+      where: {
+        userId: user.id,
+        teamId: teamId as string,
+      },
+    });
+
+    if (!teamMember) {
+      return res.status(403).json({ error: 'User is not a member of this team' });
     }
 
     const body = await req.body;

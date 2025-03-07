@@ -52,7 +52,6 @@ model Usage {
   outputTokens Int
   cost         Float
   createdAt    DateTime @default(now())
-  ApiKey       ApiKey   @relation(fields: [apiKeyId], references: [id])
   Team       Team   @relation(fields: [teamId], references: [id])
   User         User     @relation(fields: [userId], references: [id])
 }
@@ -212,7 +211,6 @@ model ApiKey {
   team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-   Usage     Usage[]
 
   @@index([teamId])
 }
