@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import TeamDropdown from '../TeamDropdown';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import Brand from './Brand';
 import Navigation from './Navigation';
 import { useTranslation } from 'next-i18next';
+import { useSession } from 'next-auth/react';
 
 interface DrawerProps {
   sidebarOpen: boolean;
@@ -12,6 +13,25 @@ interface DrawerProps {
 
 const Drawer = ({ sidebarOpen, setSidebarOpen }: DrawerProps) => {
   const { t } = useTranslation('common');
+  const { data } = useSession();
+  const [role, setRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchRole = async () => {
+      if (data?.user?.id) {
+        try {
+          const response = await fetch(`/api/getUserRole?id=${data.user.id}`);
+          const result = await response.json();
+          console.log("role:", result);
+          setRole(result.role);
+        } catch (error) {
+          console.error('Error fetching role:', error);
+        }
+      }
+    };
+
+    fetchRole();
+  }, [data]);
 
   return (
     <>
@@ -35,7 +55,7 @@ const Drawer = ({ sidebarOpen, setSidebarOpen }: DrawerProps) => {
               </div>
               <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-white dark:bg-black px-6 pb-4">
                 <Brand />
-                <TeamDropdown />
+                {role !== 'MEMBER' && <TeamDropdown />}
                 <Navigation />
               </div>
             </div>
@@ -46,7 +66,7 @@ const Drawer = ({ sidebarOpen, setSidebarOpen }: DrawerProps) => {
       <div className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-64 lg:flex-col">
         <div className="flex grow flex-col gap-y-5 overflow-y-auto border-r border-gray-200 px-6">
           <Brand />
-          <TeamDropdown />
+          {role !== 'MEMBER' && <TeamDropdown />}
           <Navigation />
         </div>
       </div>
