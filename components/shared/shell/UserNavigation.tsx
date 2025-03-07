@@ -6,17 +6,41 @@ import {
 import { useTranslation } from 'next-i18next';
 import NavigationItems from './NavigationItems';
 import { MenuItem, NavigationProps } from './NavigationItems';
+import { useSession } from 'next-auth/react';
+import { useEffect, useState } from 'react';
 
 const UserNavigation = ({ activePathname }: NavigationProps) => {
   const { t } = useTranslation('common');
+  const { data } = useSession();
+  const [role, setRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchRole = async () => {
+      if (data?.user?.id) {
+        try {
+          const response = await fetch(`/api/getUserRole?id=${data.user.id}`);
+          const result = await response.json();
+          setRole(result.role);
+        } catch (error) {
+          console.error('Error fetching role:', error);
+        }
+      }
+    };
+
+    fetchRole();
+  }, [data]);
 
   const menus: MenuItem[] = [
-    {
-      name: t('all-teams'),
-      href: '/teams',
-      icon: RectangleStackIcon,
-      active: activePathname === '/teams',
-    },
+    ...(role !== 'MEMBER'
+      ? [
+          {
+            name: t('all-teams'),
+            href: '/teams',
+            icon: RectangleStackIcon,
+            active: activePathname === '/teams',
+          },
+        ]
+      : []),
     {
       name: t('account'),
       href: '/settings/account',
