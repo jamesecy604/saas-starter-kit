@@ -136,6 +136,7 @@ model User {
   accounts    Account[]
   sessions    Session[]
   invitations Invitation[]
+  apiKeys         ApiKey[]
 }
 
 model Team {
@@ -203,6 +204,7 @@ model ApiKey {
   id         String    @id @default(uuid())
   name       String
   teamId     String
+  userId     String
   hashedKey  String    @unique
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @default(now())
@@ -210,6 +212,7 @@ model ApiKey {
   lastUsedAt DateTime?
 
   team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([teamId])
 }

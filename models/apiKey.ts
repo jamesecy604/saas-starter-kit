@@ -4,6 +4,7 @@ import { createHash, randomBytes } from 'crypto';
 interface CreateApiKeyParams {
   name: string;
   teamId: string;
+  userId: string;
 }
 
 const hashApiKey = (apiKey: string) => {
@@ -17,7 +18,7 @@ const generateUniqueApiKey = () => {
 };
 
 export const createApiKey = async (params: CreateApiKeyParams) => {
-  const { name, teamId } = params;
+  const { name, teamId , userId} = params;
 
   const [hashedKey, apiKey] = generateUniqueApiKey();
 
@@ -26,6 +27,7 @@ export const createApiKey = async (params: CreateApiKeyParams) => {
       name,
       hashedKey: hashedKey,
       team: { connect: { id: teamId } },
+      user: { connect: { id: userId } },
     },
   });
 

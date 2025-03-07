@@ -63,6 +63,7 @@ const handlePOST = async (req: NextApiRequest, res: NextApiResponse) => {
   const apiKey = await createApiKey({
     name,
     teamId: user.team.id,
+    userId: user.id
   });
 
   recordMetric('apikey.created');
