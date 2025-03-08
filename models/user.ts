@@ -1,7 +1,7 @@
 import { ApiError } from '@/lib/errors';
 import { Action, Resource, permissions } from '@/lib/permissions';
 import { prisma } from '@/lib/prisma';
-import { Role, TeamMember } from '@prisma/client';
+import { Role, TeamMember, Tenant } from '@prisma/client';
 import type { Session } from 'next-auth';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { getSession } from '@/lib/session';
@@ -21,8 +21,19 @@ export const createUser = async (data: {
   password?: string;
   emailVerified?: Date | null;
 }) => {
+  // Create tenant first
+  const tenant = await prisma.tenant.create({
+    data: {
+      name: `${data.name}'s Tenant`,
+    }
+  });
+
+  // Create user with tenant association
   return await prisma.user.create({
-    data: normalizeUser(data),
+    data: {
+      ...normalizeUser(data),
+      tenantId: tenant.id
+    },
   });
 };
 

@@ -14,10 +14,22 @@ export const createTeam = async (param: {
 }) => {
   const { userId, name, slug } = param;
 
+  // Create tenant first
+  const tenant = await prisma.tenant.create({
+    data: {
+      name,
+    },
+  });
+
   const team = await prisma.team.create({
     data: {
       name,
       slug,
+      tenant: {
+        connect: {
+          id: tenant.id
+        }
+      }
     },
   });
 
