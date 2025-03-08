@@ -44,10 +44,10 @@ model Model {
 // }
 
 model Usage {
-  id           Int      @id @default(autoincrement())
+  id           String      @id @default(uuid())
   teamId     String
   userId       String
-  apiKeyId     String
+  apiKey    String @default("")
   inputTokens  Int
   outputTokens Int
   cost         Float

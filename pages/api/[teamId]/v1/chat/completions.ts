@@ -93,7 +93,7 @@ export default async function handler(
       res.end();
 
       const usage = { promptTokens: messages.length, completionTokens: 0 };
-      await trackUsage(user.id, teamId, usage, apiKeyRecord.id);
+      await trackUsage(user.id, teamId, usage, apiKeyValue);
     } else {
       const response = await api.chat.completions.create({
         model: modelConfig.name,
@@ -114,7 +114,7 @@ export default async function handler(
         ? { promptTokens: response.usage.prompt_tokens, completionTokens: response.usage.completion_tokens }
         : { promptTokens: 0, completionTokens: 0 };
 
-      await trackUsage(user.id, teamId, usage, apiKeyRecord.id);
+      await trackUsage(user.id, teamId, usage, apiKeyValue);
 
       return res.status(200).json(response);
     }
@@ -124,16 +124,16 @@ export default async function handler(
   }
 }
 
-async function trackUsage(userId: string, teamId: string, usage: { promptTokens: number; completionTokens: number; cost?: number }, apiKeyId: string) {
-  console.log('Tracking usage:', { userId, teamId, usage, apiKeyId });
+async function trackUsage(userId: string, teamId: string, usage: { promptTokens: number; completionTokens: number; cost?: number }, apiKey: string) {
+  console.log('Tracking usage:', { userId, teamId, usage, apiKey });
 
-  if (!userId || !teamId || !apiKeyId) {
-    console.error('Invalid arguments for tracking usage:', { userId, teamId, apiKeyId });
+  if (!userId || !teamId || !apiKey) {
+    console.error('Invalid arguments for tracking usage:', { userId, teamId, apiKey });
     return;
   }
 
   const payload = {
-    apiKeyId,
+    apiKey,
     teamId,
     userId,
     inputTokens: usage.promptTokens || 0,
