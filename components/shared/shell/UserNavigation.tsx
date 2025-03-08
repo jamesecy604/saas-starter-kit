@@ -2,6 +2,7 @@ import {
   RectangleStackIcon,
   ShieldCheckIcon,
   UserCircleIcon,
+  CodeBracketIcon,
 } from '@heroicons/react/24/outline';
 import { useTranslation } from 'next-i18next';
 import NavigationItems from './NavigationItems';
@@ -41,6 +42,12 @@ const UserNavigation = ({ activePathname }: NavigationProps) => {
           },
         ]
       : []),
+    {
+      name: t('samples'),
+      href: '/samples',
+      icon: CodeBracketIcon,
+      active: activePathname === '/samples',
+    },
     {
       name: t('account'),
       href: '/settings/account',

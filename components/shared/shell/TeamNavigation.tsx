@@ -10,7 +10,7 @@ interface NavigationItemsProps extends NavigationProps {
 const TeamNavigation = ({ slug, activePathname }: NavigationItemsProps) => {
   const { t } = useTranslation('common');
 
-  const menus: MenuItem[] = [
+const menus: MenuItem[] = [
     {
       name: t('all-products'),
       href: `/teams/${slug}/products`,
@@ -18,12 +18,19 @@ const TeamNavigation = ({ slug, activePathname }: NavigationItemsProps) => {
       active: activePathname === `/teams/${slug}/products`,
     },
     {
+      name: t('samples'),
+      href: `/teams/${slug}/samples`,
+      icon: CodeBracketIcon,
+      active: activePathname === `/teams/${slug}/samples`,
+    },
+    {
       name: t('settings'),
       href: `/teams/${slug}/settings`,
       icon: Cog6ToothIcon,
       active:
         activePathname?.startsWith(`/teams/${slug}`) &&
-        !activePathname.includes('products'),
+        !activePathname.includes('products') &&
+        !activePathname.includes('samples'),
     },
   ];
 
