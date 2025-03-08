@@ -131,6 +131,7 @@ model Tenant {
   tokenPurchases TokenPurchase[]
   users         User[]
   teams         Team[]
+  checkpoints   Checkpoint[]
 
   @@index([name])
 }
@@ -294,3 +295,21 @@ model jackson_ttl {
   @@index([expiresAt], map: "_jackson_ttl_expires_at")
   @@ignore
 }
+
+model Checkpoint {
+  id             String   @id @default(uuid())
+  tenantId       String
+  calculatedAt   DateTime @default(now())
+  usageOfInput   Float
+  usageOfOutput  Float
+  balanceOfInput Float
+  balanceOfOutput Float
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+}
+
+

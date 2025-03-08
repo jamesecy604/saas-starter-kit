@@ -2,6 +2,7 @@ import app from '@/lib/app';
 import { SessionProvider } from 'next-auth/react';
 import { appWithTranslation } from 'next-i18next';
 import Head from 'next/head';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
 import colors from 'tailwindcss/colors';
 import type { AppPropsWithLayout } from 'types';
@@ -14,6 +15,9 @@ import env from '@/lib/env';
 import { Theme, applyTheme } from '@/lib/theme';
 import { Themer } from '@boxyhq/react-ui/shared';
 import { AccountLayout } from '@/components/layouts';
+
+// Create a client
+const queryClient = new QueryClient();
 
 function MyApp({ Component, pageProps }: AppPropsWithLayout) {
   const { session, ...props } = pageProps;
@@ -42,9 +46,10 @@ function MyApp({ Component, pageProps }: AppPropsWithLayout) {
         <title>{app.name}</title>
         <link rel="icon" href="https://boxyhq.com/img/favicon.ico" />
       </Head>
-      <SessionProvider session={session}>
-        <Toaster toastOptions={{ duration: 4000 }} />
-        <Themer
+      <QueryClientProvider client={queryClient}>
+        <SessionProvider session={session}>
+          <Toaster toastOptions={{ duration: 4000 }} />
+          <Themer
           overrideTheme={{
             '--primary-color': colors.blue['500'],
             '--primary-hover': colors.blue['600'],
@@ -61,8 +66,9 @@ function MyApp({ Component, pageProps }: AppPropsWithLayout) {
           }}
         >
           {getLayout(<Component {...props} />)}
-        </Themer>
-      </SessionProvider>
+          </Themer>
+        </SessionProvider>
+      </QueryClientProvider>
     </>
   );
 }
