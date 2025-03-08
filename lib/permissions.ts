@@ -79,31 +79,7 @@ export const permissions: RolePermissions = {
   ADMIN: [
     {
       resource: 'team',
-      actions: '*',
-    },
-    {
-      resource: 'team_member',
-      actions: '*',
-    },
-    {
-      resource: 'team_invitation',
-      actions: '*',
-    },
-    {
-      resource: 'team_sso',
-      actions: '*',
-    },
-    {
-      resource: 'team_dsync',
-      actions: '*',
-    },
-    {
-      resource: 'team_audit_log',
-      actions: '*',
-    },
-    {
-      resource: 'team_webhook',
-      actions: '*',
+      actions: ['read', 'leave'],
     },
     {
       resource: 'team_api_key',

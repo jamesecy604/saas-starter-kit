@@ -40,17 +40,14 @@ const InviteViaLink = ({ team }: InviteViaLinkProps) => {
 
           return value.split(',').every(isValidDomain);
         }
-      ),
-    role: Yup.string()
-      .required(t('required-role'))
-      .oneOf(availableRoles.map((r) => r.id)),
+      )
   });
 
   // Create a new invitation link
   const formik = useFormik({
     initialValues: {
       domains: '',
-      role: availableRoles[0].id,
+      role: 'member',
       sentViaEmail: false,
     },
     validationSchema: FormValidationSchema,
@@ -136,21 +133,8 @@ const InviteViaLink = ({ team }: InviteViaLinkProps) => {
           onChange={formik.handleChange}
           value={formik.values.domains}
           placeholder="Restrict domain: boxyhq.com"
-          className="text-sm w-1/2"
+          className="text-sm w-2/3"
         />
-        <select
-          className="select-bordered select rounded"
-          name="role"
-          onChange={formik.handleChange}
-          value={formik.values.role}
-          required
-        >
-          {availableRoles.map((role) => (
-            <option value={role.id} key={role.id}>
-              {role.name}
-            </option>
-          ))}
-        </select>
         <Button
           type="submit"
           color="primary"

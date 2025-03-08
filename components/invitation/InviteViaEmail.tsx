@@ -23,16 +23,13 @@ const InviteViaEmail = ({ setVisible, team }: InviteViaEmailProps) => {
     email: Yup.string()
       .email()
       .max(maxLengthPolicies.email)
-      .required(t('require-email')),
-    role: Yup.string()
-      .required(t('required-role'))
-      .oneOf(availableRoles.map((r) => r.id)),
+      .required(t('require-email'))
   });
 
   const formik = useFormik({
     initialValues: {
       email: '',
-      role: availableRoles[0].id,
+      role: 'member',
       sentViaEmail: true,
     },
     validationSchema: FormValidationSchema,
@@ -66,22 +63,9 @@ const InviteViaEmail = ({ setVisible, team }: InviteViaEmailProps) => {
           value={formik.values.email}
           placeholder="jackson@boxyhq.com"
           required
-          className="text-sm w-1/2"
+          className="text-sm w-2/3"
           type="email"
         />
-        <select
-          className="select-bordered select rounded"
-          name="role"
-          onChange={formik.handleChange}
-          value={formik.values.role}
-          required
-        >
-          {availableRoles.map((role) => (
-            <option value={role.id} key={role.id}>
-              {role.name}
-            </option>
-          ))}
-        </select>
         <Button
           type="submit"
           color="primary"
