@@ -39,7 +39,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    // Check if the user is a member of the team
     const teamMember = await prisma.teamMember.findFirst({
       where: {
         userId: user.id,
@@ -85,30 +84,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         stream: true
       });
 
-      const readableStream = new ReadableStream({
-        async start(controller) {
-          try {
-            for await (const chunk of responseStream) {
-              controller.enqueue(`data: ${JSON.stringify(chunk)}\n\n`);
-            }
-            controller.close();
-          } catch (error) {
-            console.error('Stream error:', error);
-            controller.error(error);
-          }
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+
+      try {
+        for await (const chunk of responseStream) {
+          res.write(`data: ${JSON.stringify(chunk)}\n\n`);
         }
-      });
+      } catch (error) {
+        console.error('Stream error:', error);
+        res.write(`data: ${JSON.stringify({ error: 'Stream error' })}\n\n`);
+      } finally {
+        res.end();
+      }
 
       const usage = { promptTokens: messages.length, completionTokens: 0 };
       await trackUsage(user.id, teamId as string, usage, apiKeyRecord.id);
 
-      return new Response(readableStream, {
-        headers: {
-          'Content-Type': 'text/event-stream',
-          'Cache-Control': 'no-cache',
-          Connection: 'keep-alive'
-        }
-      });
+      // No need to return a response here as the stream handles it
     } else {
       const response = await api.chat.completions.create({
         model: modelConfig.name,
@@ -131,6 +125,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       await trackUsage(user.id, teamId as string, usage, apiKeyRecord.id);
 
+      console.log("response:", response);
       return res.status(200).json({
         ...response,
         choices: response.choices.map(choice => ({
@@ -165,8 +160,7 @@ async function trackUsage(userId: string, teamId: string, usage: { promptTokens:
     cost: 0,
     createdAt: new Date(),
   };
-  console.log('Payload for prisma.usage.create:', payload);
-
+  
   await prisma.usage.create({
     data: payload
   });
