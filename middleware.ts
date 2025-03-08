@@ -71,8 +71,8 @@ const unAuthenticatedRoutes = [
   '/unlock-account',
   '/login/saml',
   '/.well-known/*',
-  '/api/*/v1/chat/completions', // Exclude this specific route
-];
+  '/api/*/v1/chat/completions'
+  ];
 
 export default async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;

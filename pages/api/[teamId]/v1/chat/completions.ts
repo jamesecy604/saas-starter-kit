@@ -7,22 +7,22 @@ const hashApiKey = (apiKey: string) => {
   return createHash('sha256').update(apiKey).digest('hex');
 };
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    const { teamId } = req.query;
     const authHeader = req.headers.authorization;
-
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({ error: 'No bearer in header' });
     }
 
     const apiKeyValue = authHeader.substring(7);
     const hashedApiKey = hashApiKey(apiKeyValue);
-
     const apiKeyRecord = await prisma.apiKey.findUnique({
       where: { hashedKey: hashedApiKey }
     });
@@ -31,7 +31,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(401).json({ error: 'Invalid API key' });
     }
 
-    const user = await prisma.user.findUnique({
+    const user = await prisma.user.findFirst({
       where: { id: apiKeyRecord.userId }
     });
 
@@ -40,18 +40,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const teamMember = await prisma.teamMember.findFirst({
-      where: {
-        userId: user.id,
-        teamId: teamId as string,
-      },
+      where: { userId: user.id },
+      select: { teamId: true }
     });
 
     if (!teamMember) {
-      return res.status(403).json({ error: 'User is not a member of this team' });
+      return res.status(403).json({ error: 'User is not a member of any team' });
     }
 
-    const body = await req.body;
+    const teamId = teamMember.teamId;
 
+    const body = req.body;
     if (!body || !body.model || !body.messages) {
       return res.status(400).json({ error: 'Invalid request payload' });
     }
@@ -77,6 +76,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     if (stream) {
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+
       const responseStream = await api.chat.completions.create({
         model: modelConfig.name,
         messages,
@@ -84,17 +87,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         stream: true
       });
 
-      res.setHeader('Content-Type', 'text/event-stream');
-      res.setHeader('Cache-Control', 'no-cache');
-      res.setHeader('Connection', 'keep-alive');
-
       for await (const chunk of responseStream) {
         res.write(`data: ${JSON.stringify(chunk)}\n\n`);
       }
       res.end();
 
       const usage = { promptTokens: messages.length, completionTokens: 0 };
-      await trackUsage(user.id, teamId as string, usage, apiKeyRecord.id);
+      await trackUsage(user.id, teamId, usage, apiKeyRecord.id);
     } else {
       const response = await api.chat.completions.create({
         model: modelConfig.name,
@@ -115,18 +114,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         ? { promptTokens: response.usage.prompt_tokens, completionTokens: response.usage.completion_tokens }
         : { promptTokens: 0, completionTokens: 0 };
 
-      await trackUsage(user.id, teamId as string, usage, apiKeyRecord.id);
-     
-      return res.status(200).json({
-        ...response,
-        choices: response.choices.map(choice => ({
-          ...choice,
-          message: {
-            ...choice.message,
-            content: choice.message.content || ''
-          }
-        }))
-      });
+      await trackUsage(user.id, teamId, usage, apiKeyRecord.id);
+
+      return res.status(200).json(response);
     }
   } catch (error) {
     console.error('Error:', error);
@@ -151,7 +141,7 @@ async function trackUsage(userId: string, teamId: string, usage: { promptTokens:
     cost: 0,
     createdAt: new Date(),
   };
-  
+
   await prisma.usage.create({
     data: payload
   });
