@@ -2,6 +2,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { OpenAI } from 'openai';
 import { prisma } from '@/lib/prisma';
 import { createHash } from 'crypto';
+import { TokenLimits } from '@/lib/tokenLimits';
 
 const hashApiKey = (apiKey: string) => {
   return createHash('sha256').update(apiKey).digest('hex');
@@ -49,10 +50,59 @@ export default async function handler(
     }
 
     const teamId = teamMember.teamId;
-
+    
     const body = req.body;
     if (!body || !body.model || !body.messages) {
       return res.status(400).json({ error: 'Invalid request payload' });
+    }
+
+    // Estimate token usage
+    const estimatedInputTokens = body.messages
+      .map(m => m.content?.length || 0)
+      .reduce((a, b) => a + b, 0) / 4; // Rough estimate
+    
+    // Check team token limits first
+    const teamDailyUsage = await getTeamDailyUsage(teamId);
+    const teamMonthlyUsage = await getTeamMonthlyUsage(teamId);
+    
+    if (teamDailyUsage + estimatedInputTokens > parseInt(process.env.TEAM_DAILY_TOKEN_LIMIT || '5000000')) {
+      return res.status(429).json({ 
+        error: 'Team daily token limit exceeded',
+        limit: process.env.TEAM_DAILY_TOKEN_LIMIT,
+        used: teamDailyUsage,
+        remaining: parseInt(process.env.TEAM_DAILY_TOKEN_LIMIT || '5000000') - teamDailyUsage
+      });
+    }
+
+    if (teamMonthlyUsage + estimatedInputTokens > parseInt(process.env.TEAM_MONTHLY_TOKEN_LIMIT || '150000000')) {
+      return res.status(429).json({ 
+        error: 'Team monthly token limit exceeded',
+        limit: process.env.TEAM_MONTHLY_TOKEN_LIMIT,
+        used: teamMonthlyUsage,
+        remaining: parseInt(process.env.TEAM_MONTHLY_TOKEN_LIMIT || '150000000') - teamMonthlyUsage
+      });
+    }
+
+    // Check user token limits
+    const dailyUsage = await getDailyUsage(user.id);
+    const monthlyUsage = await getMonthlyUsage(user.id);
+    
+    if (dailyUsage + estimatedInputTokens > parseInt(process.env.USER_DAILY_TOKEN_LIMIT || '1000000')) {
+      return res.status(429).json({ 
+        error: 'Daily token limit exceeded',
+        limit: process.env.USER_DAILY_TOKEN_LIMIT,
+        used: dailyUsage,
+        remaining: parseInt(process.env.USER_DAILY_TOKEN_LIMIT || '1000000') - dailyUsage
+      });
+    }
+
+    if (monthlyUsage + estimatedInputTokens > parseInt(process.env.USER_MONTHLY_TOKEN_LIMIT || '30000000')) {
+      return res.status(429).json({ 
+        error: 'Monthly token limit exceeded',
+        limit: process.env.USER_MONTHLY_TOKEN_LIMIT,
+        used: monthlyUsage,
+        remaining: parseInt(process.env.USER_MONTHLY_TOKEN_LIMIT || '30000000') - monthlyUsage
+      });
     }
 
     const { model, messages, temperature, stream } = body;
@@ -122,6 +172,88 @@ export default async function handler(
     console.error('Error:', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
+}
+
+async function getTeamDailyUsage(teamId: string): Promise<number> {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const result = await prisma.usage.aggregate({
+    where: {
+      teamId,
+      createdAt: {
+        gte: today
+      }
+    },
+    _sum: {
+      inputTokens: true,
+      outputTokens: true
+    }
+  });
+
+  return (result._sum.inputTokens || 0) + (result._sum.outputTokens || 0);
+}
+
+async function getTeamMonthlyUsage(teamId: string): Promise<number> {
+  const firstDayOfMonth = new Date();
+  firstDayOfMonth.setDate(1);
+  firstDayOfMonth.setHours(0, 0, 0, 0);
+
+  const result = await prisma.usage.aggregate({
+    where: {
+      teamId,
+      createdAt: {
+        gte: firstDayOfMonth
+      }
+    },
+    _sum: {
+      inputTokens: true,
+      outputTokens: true
+    }
+  });
+
+  return (result._sum.inputTokens || 0) + (result._sum.outputTokens || 0);
+}
+
+async function getDailyUsage(userId: string): Promise<number> {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const result = await prisma.usage.aggregate({
+    where: {
+      userId,
+      createdAt: {
+        gte: today
+      }
+    },
+    _sum: {
+      inputTokens: true,
+      outputTokens: true
+    }
+  });
+
+  return (result._sum.inputTokens || 0) + (result._sum.outputTokens || 0);
+}
+
+async function getMonthlyUsage(userId: string): Promise<number> {
+  const firstDayOfMonth = new Date();
+  firstDayOfMonth.setDate(1);
+  firstDayOfMonth.setHours(0, 0, 0, 0);
+
+  const result = await prisma.usage.aggregate({
+    where: {
+      userId,
+      createdAt: {
+        gte: firstDayOfMonth
+      }
+    },
+    _sum: {
+      inputTokens: true,
+      outputTokens: true
+    }
+  });
+
+  return (result._sum.inputTokens || 0) + (result._sum.outputTokens || 0);
 }
 
 async function trackUsage(userId: string, teamId: string, usage: { promptTokens: number; completionTokens: number; cost?: number }, apiKey: string) {
