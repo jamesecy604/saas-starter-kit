@@ -71,6 +71,7 @@ const unAuthenticatedRoutes = [
   '/unlock-account',
   '/login/saml',
   '/.well-known/*',
+  '/api/*/v1/chat/completions', // Exclude this specific route
 ];
 
 export default async function middleware(req: NextRequest) {
