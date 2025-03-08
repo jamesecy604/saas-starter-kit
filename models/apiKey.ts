@@ -1,5 +1,28 @@
 import { prisma } from '@/lib/prisma';
-import { createHash, randomBytes } from 'crypto';
+import { createHash, randomBytes, createCipheriv, createDecipheriv } from 'crypto';
+
+const ENCRYPTION_KEY = process.env.API_KEY_ENCRYPTION_KEY;
+if (!ENCRYPTION_KEY) {
+  throw new Error('API_KEY_ENCRYPTION_KEY environment variable is required');
+}
+
+const encrypt = (text: string): string => {
+  const iv = randomBytes(16);
+  const cipher = createCipheriv('aes-256-cbc', Buffer.from(ENCRYPTION_KEY, 'hex'), iv);
+  let encrypted = cipher.update(text);
+  encrypted = Buffer.concat([encrypted, cipher.final()]);
+  return iv.toString('hex') + ':' + encrypted.toString('hex');
+};
+
+const decrypt = (text: string): string => {
+  const textParts = text.split(':');
+  const iv = Buffer.from(textParts.shift()!, 'hex');
+  const encryptedText = Buffer.from(textParts.join(':'), 'hex');
+  const decipher = createDecipheriv('aes-256-cbc', Buffer.from(ENCRYPTION_KEY, 'hex'), iv);
+  let decrypted = decipher.update(encryptedText);
+  decrypted = Buffer.concat([decrypted, decipher.final()]);
+  return decrypted.toString();
+};
 
 interface CreateApiKeyParams {
   name: string;
@@ -21,11 +44,13 @@ export const createApiKey = async (params: CreateApiKeyParams) => {
   const { name, teamId , userId} = params;
 
   const [hashedKey, apiKey] = generateUniqueApiKey();
+  const encryptedKey = encrypt(apiKey);
 
   await prisma.apiKey.create({
     data: {
       name,
       hashedKey: hashedKey,
+      encryptedKey: encryptedKey,
       team: { connect: { id: teamId } },
       user: { connect: { id: userId } },
     },
@@ -77,7 +102,26 @@ export const getApiKeyById = async (id: string) => {
     select: {
       id: true,
       teamId: true,
-      userId: true
+      userId: true,
+      encryptedKey: true
     },
   });
+};
+
+export const getDecryptedApiKey = async (id: string, userId: string) => {
+  const apiKey = await prisma.apiKey.findUnique({
+    where: {
+      id,
+      userId
+    },
+    select: {
+      encryptedKey: true
+    },
+  });
+
+  if (!apiKey?.encryptedKey) {
+    throw new Error('API key not found or not accessible');
+  }
+
+  return decrypt(apiKey.encryptedKey);
 };

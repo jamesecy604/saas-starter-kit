@@ -203,6 +203,7 @@ model ApiKey {
   teamId     String
   userId     String
   hashedKey  String    @unique
+  encryptedKey String?
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @default(now())
   expiresAt  DateTime?

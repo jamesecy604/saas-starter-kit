@@ -1,8 +1,8 @@
-import { EmptyState, WithLoadingAndError } from '@/components/shared';
+import { EmptyState, WithLoadingAndError, CopyToClipboardButton } from '@/components/shared';
 import ConfirmationDialog from '@/components/shared/ConfirmationDialog';
+import { useState } from 'react';
 import type { ApiKey, Team } from '@prisma/client';
 import { useTranslation } from 'next-i18next';
-import { useState } from 'react';
 import { Button } from 'react-daisyui';
 import { toast } from 'react-hot-toast';
 import type { ApiResponse } from 'types';
@@ -78,7 +78,7 @@ const APIKeys = ({ team }: APIKeysProps) => {
         ) : (
           <>
             <Table
-              cols={[t('name'), t('status'), t('created'), t('actions')]}
+              cols={[t('name'), t('api-key'), t('status'), t('created'), t('actions')]}
               body={apiKeys.map((apiKey) => {
                 return {
                   id: apiKey.id,
@@ -89,6 +89,33 @@ const APIKeys = ({ team }: APIKeysProps) => {
                         color: 'success',
                         text: t('active'),
                       },
+                    },
+                    {
+                      wrap: true,
+                      element: (
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono">••••••••••••••••</span>
+                          <CopyToClipboardButton
+                            value={async () => {
+                              const response = await fetch(
+                                `/api/teams/${team.slug}/api-keys/${apiKey.id}/decrypt`,
+                                {
+                                  method: 'GET',
+                                }
+                              );
+                              
+                              if (!response.ok) {
+                                throw new Error('Failed to fetch API key');
+                              }
+                              
+                              const { data } = await response.json();
+                              return data;
+                            }}
+                            onCopy={() => toast.success(t('api-key-copied'))}
+                            onError={() => toast.error(t('failed-to-fetch-api-key'))}
+                          />
+                        </div>
+                      ),
                     },
                     {
                       wrap: true,
