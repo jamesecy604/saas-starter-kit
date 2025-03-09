@@ -80,8 +80,24 @@ export const getUserBySession = async (session: Session | null) => {
 };
 
 export const deleteUser = async (key: { id: string } | { email: string }) => {
-  return await prisma.user.delete({
+  // First get user ID if we only have email
+  const user = await prisma.user.findUnique({
     where: key,
+    select: { id: true }
+  });
+
+  if (!user) {
+    return null;
+  }
+
+  // Delete all sessions for this user
+  await prisma.session.deleteMany({
+    where: { userId: user.id }
+  });
+
+  // Now delete the user
+  return await prisma.user.delete({
+    where: { id: user.id },
   });
 };
 

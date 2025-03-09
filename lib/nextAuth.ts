@@ -360,6 +360,21 @@ export const getAuthOptions = (
         // When using database sessions, the User (user) object is provided.
         if (session && (token || user)) {
           session.user.id = token?.sub || user?.id;
+          
+          // Verify user still exists
+          const userId = token?.sub || user?.id;
+          if (userId) {
+            const existingUser = await prisma.user.findUnique({
+              where: { id: userId }
+            });
+            if (!existingUser) {
+              // Return empty session with required fields if user doesn't exist
+              return { 
+                user: {},
+                expires: new Date().toISOString()
+              };
+            }
+          }
         }
 
         if (user?.name) {
