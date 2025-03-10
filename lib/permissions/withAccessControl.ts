@@ -1,19 +1,33 @@
 import { GetServerSideProps, GetServerSidePropsContext } from 'next';
-import { getSession } from 'next-auth/react';
+import { NextApiRequest, NextApiResponse } from 'next';
+import { getServerSession } from 'next-auth';
+import { getAuthOptions } from '@/lib/nextAuth';
 import { Role } from '@/lib/permissions';
 
 type AccessControlOptions = {
   roles?: Role[];
 };
 
+type ApiHandler = (req: NextApiRequest, res: NextApiResponse) => Promise<void>;
+
 export function withAccessControl(
-  getServerSideProps: GetServerSideProps,
+  handler: GetServerSideProps | ApiHandler,
   options: AccessControlOptions = {}
 ) {
-  return async (context: GetServerSidePropsContext) => {
-    const session = await getSession(context);
+  return async (context: GetServerSidePropsContext | { req: NextApiRequest; res: NextApiResponse }) => {
+    const session = await getServerSession(
+      context.req,
+      context.res,
+      getAuthOptions(context.req, context.res)
+    );
 
     if (!session) {
+      // Handle API routes
+      if ('res' in context && 'status' in context.res) {
+        (context.res as NextApiResponse).status(401).json({ error: 'Unauthorized' });
+        return;
+      }
+      // Handle getServerSideProps
       return {
         redirect: {
           destination: '/auth/login',
@@ -22,10 +36,20 @@ export function withAccessControl(
       };
     }
 
+    // Handle API routes
+    if ('res' in context && 'status' in context.res) {
+      const apiReq = context.req as NextApiRequest;
+      const apiRes = context.res as NextApiResponse;
+      return (handler as ApiHandler)(apiReq, apiRes);
+    }
+
+    // Handle getServerSideProps
+    const ssrContext = context as GetServerSidePropsContext;
+    
     // Check if user is system admin
     if (session.user.systemRole === 'SYSADMIN') {
       // Redirect system admins away from teams page
-      if (context.resolvedUrl.startsWith('/teams')) {
+      if (ssrContext.resolvedUrl.startsWith('/teams')) {
         return {
           redirect: {
             destination: '/model-management',
@@ -35,7 +59,7 @@ export function withAccessControl(
       }
       
       console.log('System admin access granted');
-      const result = await getServerSideProps(context);
+      const result = await (handler as GetServerSideProps)(ssrContext);
       return {
         ...result,
         props: {
@@ -60,7 +84,7 @@ export function withAccessControl(
     //   }
     // }
 
-    const result = await getServerSideProps(context);
+    const result = await (handler as GetServerSideProps)(ssrContext);
     return {
       ...result,
       props: {
