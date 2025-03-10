@@ -3,6 +3,7 @@ import {
   ShieldCheckIcon,
   UserCircleIcon,
   CodeBracketIcon,
+  Cog8ToothIcon,
 } from '@heroicons/react/24/outline';
 import { useTranslation } from 'next-i18next';
 import NavigationItems from './NavigationItems';
@@ -21,6 +22,7 @@ const UserNavigation = ({ activePathname }: NavigationProps) => {
         try {
           const response = await fetch(`/api/getUserRole?id=${data.user.id}`);
           const result = await response.json();
+          console.log('User role :', result.role);
           setRole(result.role);
         } catch (error) {
           console.error('Error fetching role:', error);
@@ -32,7 +34,7 @@ const UserNavigation = ({ activePathname }: NavigationProps) => {
   }, [data]);
 
   const menus: MenuItem[] = [
-    ...(role !== 'MEMBER'
+    ...(role === 'OWNER' || role === 'ADMIN'
       ? [
           {
             name: t('all-teams'),
@@ -60,6 +62,16 @@ const UserNavigation = ({ activePathname }: NavigationProps) => {
       icon: ShieldCheckIcon,
       active: activePathname === '/settings/security',
     },
+    ...(role === 'SYSADMIN'
+      ? [
+          {
+            name: t('model-management'),
+            href: '/model-management',
+            icon: Cog8ToothIcon,
+            active: activePathname === '/model-management',
+          },
+        ]
+      : []),
   ];
 
   return <NavigationItems menus={menus} />;

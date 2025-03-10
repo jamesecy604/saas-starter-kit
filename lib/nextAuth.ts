@@ -359,51 +359,40 @@ export const getAuthOptions = (
         // When using JWT for sessions, the JWT payload (token) is provided.
         // When using database sessions, the User (user) object is provided.
         if (session && (token || user)) {
-          session.user.id = token?.sub || user?.id;
-          
-          // Verify user still exists
           const userId = token?.sub || user?.id;
           if (userId) {
             const existingUser = await prisma.user.findUnique({
-              where: { id: userId }
+              where: { id: userId },
+              include: {
+                roles: true, // Assuming you have a relation to fetch roles
+              },
             });
-            if (!existingUser) {
-              // Return empty session with required fields if user doesn't exist
-              return { 
+      
+            if (existingUser) {
+              session.user = {
+                id: existingUser.id,
+                name: existingUser.name,
+                email: existingUser.email,
+                roles: existingUser.roles || [], // Ensure roles are included
+                systemRole: existingUser.systemRole, // Include systemRole if applicable
+              };
+            } else {
+              return {
                 user: {},
-                expires: new Date().toISOString()
+                expires: new Date().toISOString(),
               };
             }
           }
         }
-
-        if (user?.name) {
-          user.name = user.name.substring(0, maxLengthPolicies.name);
-        }
-        if (session?.user?.name) {
-          session.user.name = session.user.name.substring(
-            0,
-            maxLengthPolicies.name
-          );
-        }
-
         return session;
       },
 
-      async jwt({ token, trigger, session, account }) {
-        if (trigger === 'signIn' && account?.provider === 'boxyhq-idp') {
-          const userByAccount = await adapter.getUserByAccount!({
-            providerAccountId: account.providerAccountId,
-            provider: account.provider,
-          });
-
-          return { ...token, sub: userByAccount?.id };
+      async jwt({ token, user, account }) {
+        if (account && user) {
+          token.sub = user.id;
+          token.name = user.name;
+          token.email = user.email;
         }
-
-        if (trigger === 'update' && 'name' in session && session.name) {
-          return { ...token, name: session.name };
-        }
-
         return token;
       },
     },

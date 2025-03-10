@@ -30,6 +30,29 @@ export default async function handler(
     }
   });
 
+  // Check if user is system admin
+  if (session.user.systemRole === 'SYSADMIN') {
+    // System admins can view all balances
+    const allPurchases = await prisma.tokenPurchase.aggregate({
+      _sum: {
+        inputTokens: true,
+        outputTokens: true
+      }
+    });
+
+    const allUsage = await prisma.usage.aggregate({
+      _sum: {
+        inputTokens: true,
+        outputTokens: true
+      }
+    });
+
+    return res.status(200).json({
+      balanceOfInput: (allPurchases._sum.inputTokens || 0) - (allUsage._sum.inputTokens || 0),
+      balanceOfOutput: (allPurchases._sum.outputTokens || 0) - (allUsage._sum.outputTokens || 0)
+    });
+  }
+
   // Check if user is Owner of any team
   const isOwner = teamMembers.some(member => 
     member.role === 'OWNER'

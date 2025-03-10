@@ -13,11 +13,31 @@ const useInvitation = (token?: string) => {
     const inviteToken = token || (isReady ? query.token : null);
     return inviteToken ? `/api/invitations/${inviteToken}` : null;
   }, fetcher);
+  
+  // Return consistent initial state
+  if (isLoading || !data) {
+    return {
+      isLoading: true,
+      error: null,
+      invitation: null
+    };
+  }
+
+  if (error || !data.data) {
+    return {
+      isLoading: false,
+      error: error || new Error('No invitation data found'),
+      invitation: null
+    };
+  }
 
   return {
-    isLoading,
-    error,
-    invitation: data?.data,
+    isLoading: false,
+    error: null,
+    invitation: {
+      ...data.data,
+      email: data.data.email
+    }
   };
 };
 

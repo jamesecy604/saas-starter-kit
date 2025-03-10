@@ -1,5 +1,7 @@
 import { Role } from '@prisma/client';
 
+export { Role };
+
 type RoleType = (typeof Role)[keyof typeof Role];
 export type Action = 'create' | 'update' | 'read' | 'delete' | 'leave';
 export type Resource =
@@ -11,7 +13,10 @@ export type Resource =
   | 'team_audit_log'
   | 'team_webhook'
   | 'team_payments'
-  | 'team_api_key';
+  | 'team_api_key'
+  | 'tenant'
+  | 'tenant_management'
+  | 'tenant_settings';
 
 type RolePermissions = {
   [role in RoleType]: Permission[];
@@ -23,6 +28,10 @@ export type Permission = {
 };
 
 export const availableRoles = [
+  {
+    id: Role.SYSADMIN,
+    name: 'System Admin',
+  },
   {
     id: Role.MEMBER,
     name: 'Member',
@@ -38,6 +47,56 @@ export const availableRoles = [
 ];
 
 export const permissions: RolePermissions = {
+  SYSADMIN: [
+    {
+      resource: 'team',
+      actions: '*',
+    },
+    {
+      resource: 'team_member',
+      actions: '*',
+    },
+    {
+      resource: 'team_invitation',
+      actions: '*',
+    },
+    {
+      resource: 'team_sso',
+      actions: '*',
+    },
+    {
+      resource: 'team_dsync',
+      actions: '*',
+    },
+    {
+      resource: 'team_audit_log',
+      actions: '*',
+    },
+    {
+      resource: 'team_payments',
+      actions: '*',
+    },
+    {
+      resource: 'team_webhook',
+      actions: '*',
+    },
+    {
+      resource: 'team_api_key',
+      actions: '*',
+    },
+    {
+      resource: 'tenant',
+      actions: '*',
+    },
+    {
+      resource: 'tenant_management',
+      actions: '*',
+    },
+    {
+      resource: 'tenant_settings',
+      actions: '*',
+    },
+  ],
   OWNER: [
     {
       resource: 'team',

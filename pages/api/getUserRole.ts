@@ -1,26 +1,54 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import {prisma} from '@/lib/prisma'; // Adjust the import based on your setup
+import { getSession } from 'next-auth/react';
+import { prisma } from '@/lib/prisma';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const { id } = req.query;
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
+  const session = await getSession({ req });
 
-  if (!id || typeof id !== 'string') {
-    return res.status(400).json({ error: 'Invalid user ID' });
+  if (!session) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  const userId = req.query.id as string;
+
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    const teamMember = await prisma.teamMember.findFirst({
-      where: { userId: id },
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { systemRole: true },
+    });
+
+    // If user is system admin, return immediately
+    if (user?.systemRole === 'SYSADMIN') {
+      return res.status(200).json({ role: 'SYSADMIN' });
+    }
+
+    const memberships = await prisma.teamMember.findMany({
+      where: { userId },
       select: { role: true },
     });
 
-    if (!teamMember) {
-      return res.status(404).json({ error: 'Role not found' });
+    if (!memberships.length) {
+      return res.status(200).json({ role: 'OWNER' });
     }
 
-    return res.status(200).json({ role: teamMember.role });
+    // Return the highest privileged role from all memberships
+    const roles = memberships.map((m) => m.role);
+    const role = roles.includes('OWNER')
+      ? 'OWNER'
+      : roles.includes('ADMIN')
+      ? 'ADMIN'
+      : 'MEMBER';
+
+    return res.status(200).json({ role });
   } catch (error) {
-    console.error('Error fetching role:', error);
+    console.error(error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 }

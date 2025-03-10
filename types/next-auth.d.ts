@@ -9,7 +9,12 @@ declare module 'next-auth' {
     user: DefaultSession['user'] & {
       id: string;
       roles: { teamId: string; role: Role }[];
+      systemRole?: 'SYSADMIN' | 'OWNER' | 'ADMIN' | 'MEMBER';
     };
+  }
+
+  interface User {
+    systemRole?: 'SYSADMIN' | 'OWNER' | 'ADMIN' | 'MEMBER';
   }
 
   interface Profile {
