@@ -356,25 +356,35 @@ export const getAuthOptions = (
       },
 
       async session({ session, token, user }) {
-        // When using JWT for sessions, the JWT payload (token) is provided.
-        // When using database sessions, the User (user) object is provided.
         if (session && (token || user)) {
           const userId = token?.sub || user?.id;
           if (userId) {
             const existingUser = await prisma.user.findUnique({
               where: { id: userId },
               include: {
-                roles: true, // Assuming you have a relation to fetch roles
+                teamMembers: {
+                  include: {
+                    team: true,
+                  },
+                },
               },
             });
       
             if (existingUser) {
+              // Check if the user is a sysAdmin
+              const isSysAdmin = existingUser.systemRole === 'SYSADMIN';
+      
               session.user = {
                 id: existingUser.id,
                 name: existingUser.name,
                 email: existingUser.email,
-                roles: existingUser.roles || [], // Ensure roles are included
-                systemRole: existingUser.systemRole, // Include systemRole if applicable
+                roles: isSysAdmin
+                  ? [{ teamId: null, role: 'SYSADMIN' }] // sysAdmin role
+                  : existingUser.teamMembers.map(member => ({
+                      teamId: member.team.id,
+                      role: member.role,
+                    })), // Non-sysAdmin roles
+                systemRole: existingUser.systemRole,
               };
             } else {
               return {
@@ -384,6 +394,7 @@ export const getAuthOptions = (
             }
           }
         }
+      
         return session;
       },
 
