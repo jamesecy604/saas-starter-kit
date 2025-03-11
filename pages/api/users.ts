@@ -1,5 +1,6 @@
-import { getSession } from '@/lib/session';
+import { getServerSession } from 'next-auth/next';
 import type { NextApiRequest, NextApiResponse } from 'next';
+import { getAuthOptions } from '@/lib/nextAuth';
 import { recordMetric } from '@/lib/metrics';
 import { ApiError } from '@/lib/errors';
 import env from '@/lib/env';
@@ -33,7 +34,7 @@ export default async function handler(
 const handlePUT = async (req: NextApiRequest, res: NextApiResponse) => {
   const data = validateWithSchema(updateAccountSchema, req.body);
 
-  const session = await getSession(req, res);
+  const session = await getServerSession(req, res, getAuthOptions(req, res));
 
   if ('email' in data) {
     const allowEmailChange = env.confirmEmail === false;

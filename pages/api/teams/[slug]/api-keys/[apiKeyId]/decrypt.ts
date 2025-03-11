@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { getSession } from 'next-auth/react';
+import { getServerSession } from 'next-auth/next';
+import { getAuthOptions } from '@/lib/nextAuth';
 import { getDecryptedApiKey } from '@/models/apiKey';
 import { getTeam } from '@/models/team';
 import { permissions } from '@/lib/permissions';
@@ -13,7 +14,7 @@ export default async function handler(
   }
 
   try {
-    const session = await getSession({ req });
+    const session = await getServerSession(req, res, getAuthOptions(req, res));
     if (!session?.user?.id) {
       return res.status(401).json({ error: 'Unauthorized' });
     }

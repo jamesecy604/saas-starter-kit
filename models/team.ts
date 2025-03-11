@@ -1,6 +1,8 @@
 import { prisma } from '@/lib/prisma';
-import { getSession } from '@/lib/session';
+import { getServerSession } from 'next-auth';
+import { getAuthOptions } from '@/lib/nextAuth';
 import { findOrCreateApp } from '@/lib/svix';
+import { ApiError } from '@/lib/errors';
 import { Role, Team } from '@prisma/client';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { getCurrentUser } from './user';
@@ -337,26 +339,32 @@ export const throwIfNoTeamAccess = async (
   req: NextApiRequest,
   res: NextApiResponse
 ) => {
-  const session = await getSession(req, res);
+  const session = await getServerSession(req, res, getAuthOptions(req, res));
 
-  if (!session) {
-    throw new Error('Unauthorized');
+  if (!session?.user?.id) {
+    throw new ApiError(401, 'Authentication required');
   }
 
   const { slug } = validateWithSchema(teamSlugSchema, req.query);
 
-  const teamMember = await getTeamMember(session.user.id, slug);
-
-  if (!teamMember) {
-    throw new Error('You do not have access to this team');
+  try {
+    const teamMember = await getTeamMember(session.user.id, slug);
+    
+    return {
+      ...teamMember,
+      user: {
+        ...session.user,
+      },
+    };
+  } catch (error) {
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    throw new ApiError(
+      403,
+      `You don't have access to team '${slug}'. Please contact an admin.`
+    );
   }
-
-  return {
-    ...teamMember,
-    user: {
-      ...session.user,
-    },
-  };
 };
 
 /*

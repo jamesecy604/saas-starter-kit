@@ -11,6 +11,11 @@ declare module 'next-auth' {
       roles: { teamId: string; role: Role }[];
       systemRole?: 'SYSADMIN' | 'OWNER' | 'ADMIN' | 'MEMBER';
     };
+    accessToken?: string;
+  }
+
+  interface Error {
+    status?: number;
   }
 
   interface User {

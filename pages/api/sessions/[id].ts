@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { getSession } from '@/lib/session';
+import { getServerSession } from 'next-auth/next';
+import { getAuthOptions } from '@/lib/nextAuth';
 import { deleteSession, findFirstSessionOrThrown } from 'models/session';
 import { validateWithSchema, deleteSessionSchema } from '@/lib/zod';
 
@@ -30,7 +31,7 @@ export default async function handler(
 const handleDELETE = async (req: NextApiRequest, res: NextApiResponse) => {
   const { id } = validateWithSchema(deleteSessionSchema, req.query);
 
-  const session = await getSession(req, res);
+  const session = await getServerSession(req, res, getAuthOptions(req, res));
 
   await findFirstSessionOrThrown({
     where: {

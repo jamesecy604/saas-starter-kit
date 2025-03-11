@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { getCookie } from 'cookies-next';
-import { getSession } from '@/lib/session';
+import { getServerSession } from 'next-auth/next';
+import { getAuthOptions } from '@/lib/nextAuth';
 import { sessionTokenCookieName } from '@/lib/nextAuth';
 import { findManySessions } from 'models/session';
 
@@ -29,7 +30,7 @@ export default async function handler(
 
 // Fetch all sessions for the current user
 const handleGET = async (req: NextApiRequest, res: NextApiResponse) => {
-  const session = await getSession(req, res);
+  const session = await getServerSession(req, res, getAuthOptions(req, res));
   const sessionToken = await getCookie(sessionTokenCookieName, { req, res });
 
   let sessions = await findManySessions({

@@ -1,20 +1,59 @@
 import { GetServerSideProps, GetServerSidePropsContext } from 'next';
-import { NextApiRequest, NextApiResponse } from 'next';
+import type { IncomingMessage, ServerResponse } from 'http';
 import { getServerSession } from 'next-auth';
 import { getAuthOptions } from '@/lib/nextAuth';
 import { Role } from '@/lib/permissions';
+import { ApiError } from '@/lib/errors';
+import { getTeam } from 'models/team';
+import { getTeamMember } from 'models/teamMember';
 
 type AccessControlOptions = {
   roles?: Role[];
 };
 
-type ApiHandler = (req: NextApiRequest, res: NextApiResponse) => Promise<void>;
+type ApiContext = {
+  req: IncomingMessage & { cookies: Partial<{ [key: string]: string }> };
+  res: ServerResponse<IncomingMessage>;
+};
+
+type ApiHandler = (context: ApiContext) => Promise<void>;
+
+export async function throwIfNoTeamAccess(req: any, res: any) {
+  const session = await getServerSession(
+    req,
+    res,
+    getAuthOptions(req, res)
+  );
+
+  if (!session) {
+    throw new ApiError(401, 'Unauthorized');
+  }
+
+  const team = await getTeam({ slug: req.query.slug });
+  
+  if (!team) {
+    throw new ApiError(404, 'Team not found');
+  }
+
+  const teamMember = await getTeamMember({
+    teamId: team.id,
+    userId: session.user.id
+  });
+
+  if (!teamMember) {
+    throw new ApiError(403, 'Forbidden');
+  }
+
+  return teamMember;
+}
 
 export function withAccessControl(
-  handler: GetServerSideProps | ApiHandler,
+  handler: GetServerSideProps | ApiHandler, 
   options: AccessControlOptions = {}
 ) {
-  return async (context: GetServerSidePropsContext | { req: NextApiRequest; res: NextApiResponse }) => {
+  return async (
+    context: GetServerSidePropsContext | ApiContext
+  ) => {
     const session = await getServerSession(
       context.req,
       context.res,
@@ -24,7 +63,9 @@ export function withAccessControl(
     if (!session) {
       // Handle API routes
       if ('res' in context && 'status' in context.res) {
-        (context.res as NextApiResponse).status(401).json({ error: 'Unauthorized' });
+        (context.res as ServerResponse).statusCode = 401;
+        (context.res as ServerResponse).setHeader('Content-Type', 'application/json');
+        (context.res as ServerResponse).end(JSON.stringify({ error: 'Unauthorized' }));
         return;
       }
       // Handle getServerSideProps
@@ -38,9 +79,7 @@ export function withAccessControl(
 
     // Handle API routes
     if ('res' in context && 'status' in context.res) {
-      const apiReq = context.req as NextApiRequest;
-      const apiRes = context.res as NextApiResponse;
-      return (handler as ApiHandler)(apiReq, apiRes);
+      return (handler as ApiHandler)(context);
     }
 
     // Handle getServerSideProps

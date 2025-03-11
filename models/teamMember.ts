@@ -12,3 +12,12 @@ export const updateTeamMember = async ({ where, data }) => {
     data,
   });
 };
+
+export const getTeamMember = async ({ teamId, userId }) => {
+  return await prisma.teamMember.findFirst({
+    where: {
+      teamId,
+      userId
+    }
+  });
+};

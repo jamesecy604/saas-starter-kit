@@ -25,12 +25,14 @@ const Dashboard: NextPageWithLayout = () => {
   return <Loading />;
 };
 
-export async function getStaticProps({ locale }: GetServerSidePropsContext) {
+export const getServerSideProps = async (context: GetServerSidePropsContext) => {
+  const { locale } = context;
+
   return {
     props: {
       ...(locale ? await serverSideTranslations(locale, ['common']) : {}),
     },
   };
-}
+};
 
 export default Dashboard;

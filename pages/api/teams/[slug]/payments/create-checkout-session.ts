@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 
-import { getSession } from '@/lib/session';
+import { getServerSession } from 'next-auth';
+import { getAuthOptions } from '@/lib/nextAuth';
 import { throwIfNoTeamAccess } from 'models/team';
 import { stripe, getStripeCustomerId } from '@/lib/stripe';
 import env from '@/lib/env';
@@ -36,26 +37,35 @@ const handlePOST = async (req: NextApiRequest, res: NextApiResponse) => {
   );
 
   const teamMember = await throwIfNoTeamAccess(req, res);
-  const session = await getSession(req, res);
+  const session = await getServerSession(req, res, getAuthOptions(req, res));
   const customer = await getStripeCustomerId(teamMember, session);
 
-  const checkoutSession = await stripe.checkout.sessions.create({
-    customer,
-    mode: 'subscription',
-    line_items: [
-      {
-        price,
-        quantity,
-      },
-    ],
+  try {
+    const checkoutSession = await stripe.checkout.sessions.create({
+      customer,
+      mode: 'subscription',
+      line_items: [
+        {
+          price,
+          quantity,
+        },
+      ],
+      success_url: `${env.appUrl}/teams/${teamMember.team.slug}/billing`,
+      cancel_url: `${env.appUrl}/teams/${teamMember.team.slug}/billing`,
+    });
 
-    // {CHECKOUT_SESSION_ID} is a string literal; do not change it!
-    // the actual Session ID is returned in the query parameter when your customer
-    // is redirected to the success page.
-
-    success_url: `${env.appUrl}/teams/${teamMember.team.slug}/billing`,
-    cancel_url: `${env.appUrl}/teams/${teamMember.team.slug}/billing`,
-  });
-
-  res.json({ data: checkoutSession });
+    return res.status(200).json({ 
+      success: true,
+      data: checkoutSession 
+    });
+  } catch (error: any) {
+    console.error('Stripe checkout session creation failed:', error);
+    return res.status(500).json({ 
+      success: false,
+      error: {
+        message: 'Failed to create checkout session',
+        details: error.message
+      }
+    });
+  }
 };

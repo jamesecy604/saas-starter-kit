@@ -1,6 +1,7 @@
 import { hashPassword, verifyPassword } from '@/lib/auth';
-import { getSession } from '@/lib/session';
+import { getServerSession } from 'next-auth';
 import type { NextApiRequest, NextApiResponse } from 'next';
+import { getAuthOptions } from '@/lib/nextAuth';
 import { ApiError } from 'next/dist/server/api-utils';
 import { recordMetric } from '@/lib/metrics';
 import { getCookie } from 'cookies-next';
@@ -36,7 +37,7 @@ export default async function handler(
 }
 
 const handlePUT = async (req: NextApiRequest, res: NextApiResponse) => {
-  const session = await getSession(req, res);
+  const session = await getServerSession(req, res, getAuthOptions(req, res));
 
   const { currentPassword, newPassword } = validateWithSchema(
     updatePasswordSchema,
