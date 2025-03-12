@@ -1,8 +1,7 @@
 import { sendTeamInviteEmail } from '@/lib/email/sendTeamInviteEmail';
 import { ApiError } from '@/lib/errors';
 import { sendAudit } from '@/lib/retraced';
-import { getServerSession } from 'next-auth';
-import { getAuthOptions } from '@/lib/nextAuth';
+import { getSession } from '@/lib/session';
 import { sendEvent } from '@/lib/svix';
 import {
   createInvitation,
@@ -12,8 +11,7 @@ import {
   getInvitations,
   isInvitationExpired,
 } from 'models/invitation';
-import { addTeamMember } from 'models/team';
-import { getTeamMember } from 'models/teamMember';
+import { addTeamMember, throwIfNoTeamAccess } from 'models/team';
 import { throwIfNotAllowed } from 'models/user';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { recordMetric } from '@/lib/metrics';
@@ -64,20 +62,7 @@ export default async function handler(
 
 // Invite a user to a team
 const handlePOST = async (req: NextApiRequest, res: NextApiResponse) => {
-  console.log("req:", req);
-  const session = await getServerSession(req, res, getAuthOptions(req, res));
-  if (!session?.user) {
-    throw new ApiError(401, 'Unauthorized');
-  }
-
-  const teamMember = await getTeamMember({
-    teamId: req.query.slug as string,
-    userId: session.user.id
-  });
-
-  if (!teamMember) {
-    throw new ApiError(403, 'You do not have access to this team');
-  }
+  const teamMember = await throwIfNoTeamAccess(req, res);
   throwIfNotAllowed(teamMember, 'team_invitation', 'create');
 
   const { email, role, sentViaEmail, domains } = validateWithSchema(
@@ -105,6 +90,43 @@ const handlePOST = async (req: NextApiRequest, res: NextApiResponse) => {
       );
     }
 
+    /*
+    Aggregate  (cost=12.61..12.62 rows=1 width=8) (actual time=0.040..0.040 rows=1 loops=1)
+  ->  Nested Loop  (cost=0.42..12.60 rows=1 width=32) (actual time=0.037..0.038 rows=1 loops=1)
+        ->  Index Scan using "User_email_key" on "User" j1  (cost=0.14..8.16 rows=1 width=37) (actual time=0.025..0.026 rows=1 loops=1)
+              Index Cond: (email = 'admin@example.com'::text)
+              Filter: (id IS NOT NULL)
+        ->  Index Only Scan using "TeamMember_teamId_userId_key" on "TeamMember"  (cost=0.28..4.30 rows=1 width=37) (actual time=0.010..0.010 rows=1 loops=1)
+              Index Cond: (("teamId" = '386a5102-0427-403a-b6c1-877de86d1ce0'::text) AND ("userId" = j1.id))
+              Heap Fetches: 0
+Planning Time: 1.472 ms
+Execution Time: 0.065 ms
+    */
+
+    /*
+SELECT COUNT(*) FROM (
+    SELECT 
+        "public"."TeamMember"."id" 
+    FROM "public"."TeamMember" LEFT JOIN "public"."User" AS "j1" ON ("j1"."id") = ("public"."TeamMember"."userId") 
+    WHERE ("public"."TeamMember"."teamId" = '7974330a-c8ca-4043-9e3c-3f326d1b6973' AND ("j1"."email" = 'admin@example.com' AND ("j1"."id" IS NOT NULL))) 
+    OFFSET 0
+) AS "sub"
+*/
+
+    /*
+Aggregate  (cost=2.05..2.06 rows=1 width=8) (actual time=0.046..0.047 rows=1 loops=1)
+  ->  Nested Loop  (cost=0.00..2.04 rows=1 width=32) (actual time=0.046..0.046 rows=0 loops=1)
+        Join Filter: ("TeamMember"."userId" = j1.id)
+        Rows Removed by Join Filter: 1
+        ->  Seq Scan on "TeamMember"  (cost=0.00..1.01 rows=1 width=37) (actual time=0.028..0.028 rows=1 loops=1)
+              Filter: ("teamId" = '7974330a-c8ca-4043-9e3c-3f326d1b6973'::text)
+              Rows Removed by Filter: 4
+        ->  Seq Scan on "User" j1  (cost=0.00..1.01 rows=1 width=37) (actual time=0.011..0.011 rows=1 loops=1)
+              Filter: ((id IS NOT NULL) AND (email = 'admin@example.com'::text))
+              Rows Removed by Filter: 2
+Planning Time: 1.285 ms
+Execution Time: 0.152 ms
+*/
     const memberExists = await countTeamMembers({
       where: {
         teamId: teamMember.teamId,
@@ -177,40 +199,17 @@ const handlePOST = async (req: NextApiRequest, res: NextApiResponse) => {
 
 // Get all invitations for a team
 const handleGET = async (req: NextApiRequest, res: NextApiResponse) => {
-  const { slug, sentViaEmail } = req.query;
-
-  if (!slug || !sentViaEmail) {
-    throw new ApiError(400, 'Missing required query parameters');
-  }
-
-  const session = await getServerSession(req, res, getAuthOptions(req, res));
-  if (!session?.user) {
-    throw new ApiError(401, 'Unauthorized');
-  }
-
-  const teamMember = await getTeamMember({
-    teamId: req.query.slug as string,
-    userId: session.user.id
-  });
-
-  if (!teamMember) {
-    throw new ApiError(403, 'You do not have access to this team');
-  }
+  const teamMember = await throwIfNoTeamAccess(req, res);
   throwIfNotAllowed(teamMember, 'team_invitation', 'read');
 
-  // Validate team access
-  if (teamMember.teamId !== req.query.slug) {
-    throw new ApiError(403, 'You do not have access to this team');
-  }
-
-  const { sentViaEmail: validatedSentViaEmail } = validateWithSchema(
+  const { sentViaEmail } = validateWithSchema(
     getInvitationsSchema,
-    { sentViaEmail }
+    req.query as { sentViaEmail: string }
   );
 
   const invitations = await getInvitations(
     teamMember.teamId,
-    validatedSentViaEmail === 'true'
+    sentViaEmail === 'true'
   );
 
   recordMetric('invitation.fetched');
@@ -220,19 +219,7 @@ const handleGET = async (req: NextApiRequest, res: NextApiResponse) => {
 
 // Delete an invitation
 const handleDELETE = async (req: NextApiRequest, res: NextApiResponse) => {
-  const session = await getServerSession(req, res, getAuthOptions(req, res));
-  if (!session?.user) {
-    throw new ApiError(401, 'Unauthorized');
-  }
-
-  const teamMember = await getTeamMember({
-    teamId: req.query.slug as string,
-    userId: session.user.id
-  });
-
-  if (!teamMember) {
-    throw new ApiError(403, 'You do not have access to this team');
-  }
+  const teamMember = await throwIfNoTeamAccess(req, res);
   throwIfNotAllowed(teamMember, 'team_invitation', 'delete');
 
   const { id } = validateWithSchema(
@@ -243,7 +230,7 @@ const handleDELETE = async (req: NextApiRequest, res: NextApiResponse) => {
   const invitation = await getInvitation({ id });
 
   if (
-    invitation.invitedBy != teamMember.userId ||
+    invitation.invitedBy != teamMember.user.id ||
     invitation.team.id != teamMember.teamId
   ) {
     throw new ApiError(
@@ -281,7 +268,7 @@ const handlePUT = async (req: NextApiRequest, res: NextApiResponse) => {
     throw new ApiError(400, 'Invitation expired. Please request a new one.');
   }
 
-  const session = await getServerSession(req, res, getAuthOptions(req, res));
+  const session = await getSession(req, res);
   const email = session?.user.email as string;
 
   // Make sure the user is logged in with the invited email address (Join via email)
@@ -307,33 +294,19 @@ const handlePUT = async (req: NextApiRequest, res: NextApiResponse) => {
     }
   }
 
-  try {
-    const teamMember = await addTeamMember(
-      invitation.team.id,
-      session?.user?.id as string,
-      invitation.role
-    );
+  const teamMember = await addTeamMember(
+    invitation.team.id,
+    session?.user?.id as string,
+    invitation.role
+  );
 
-    await sendEvent(invitation.team.id, 'member.created', teamMember);
+  await sendEvent(invitation.team.id, 'member.created', teamMember);
 
-    if (invitation.sentViaEmail) {
-      await deleteInvitation({ token: inviteToken });
-    }
-
-    recordMetric('member.created');
-
-    return res.status(200).json({
-      success: true,
-      data: teamMember
-    });
-  } catch (error: any) {
-    console.error('Failed to accept invitation:', error);
-    return res.status(500).json({
-      success: false,
-      error: {
-        message: 'Failed to accept invitation',
-        details: error.message
-      }
-    });
+  if (invitation.sentViaEmail) {
+    await deleteInvitation({ token: inviteToken });
   }
+
+  recordMetric('member.created');
+
+  res.status(204).end();
 };
