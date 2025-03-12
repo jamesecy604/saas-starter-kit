@@ -249,5 +249,6 @@
   "multiple-sso-teams": "User belongs to multiple teams with SSO enabled. Please enter your team slug to get started.",
   "model-management": "Model Management",
   "samples": "Samples",
-  "all-teams": "All Teams"
+  "all-teams": "All Teams",
+  "failed-to-load-audit-logs": "Failed to load audit logs. Please try again later."
 }

@@ -1,9 +1,8 @@
 import { ApiError } from '@/lib/errors';
-import { Action, Resource, permissions } from '@/lib/permissions';
+import { Action, Resource, checkAccess, getCachedSession} from '@/lib/permissions';
 import { prisma } from '@/lib/prisma';
-import { Role, TeamMember, Tenant } from '@prisma/client';
 import type { Session } from 'next-auth';
-import type { NextApiRequest, NextApiResponse } from 'next';
+import type { NextApiRequest, NextApiResponse, NextPageContext } from 'next';
 import { getSession } from '@/lib/session';
 import { maxLengthPolicies } from '@/lib/common';
 
@@ -109,39 +108,21 @@ export const findFirstUserOrThrow = async ({ where }) => {
   return normalizeUser(user);
 };
 
-const isAllowed = (role: Role, resource: Resource, action: Action) => {
-  const rolePermissions = permissions[role];
 
-  if (!rolePermissions) {
-    return false;
-  }
-
-  for (const permission of rolePermissions) {
-    if (
-      permission.resource === resource &&
-      (permission.actions === '*' || permission.actions.includes(action))
-    ) {
-      return true;
-    }
-  }
-
-  return false;
-};
-
-export const throwIfNotAllowed = (
-  user: Pick<TeamMember, 'role'>,
+export const throwIfNotAllowed = async (
+  req: NextApiRequest,
+  res: NextApiResponse,
   resource: Resource,
   action: Action
 ) => {
-  if (isAllowed(user.role, resource, action)) {
-    return true;
+  const session = await getCachedSession(req, res);
+  const result = await checkAccess(session, resource, action);
+  if (!result.allowed) {
+    throw new ApiError(result.status, result.message);
   }
-
-  throw new ApiError(
-    403,
-    `You are not allowed to perform ${action} on ${resource}`
-  );
+  return true;
 };
+
 
 // Get current user from session
 export const getCurrentUser = async (

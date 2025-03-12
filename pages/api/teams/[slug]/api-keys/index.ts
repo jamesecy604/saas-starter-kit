@@ -43,7 +43,7 @@ export default async function handler(
 const handleGET = async (req: NextApiRequest, res: NextApiResponse) => {
   const user = await getCurrentUserWithTeam(req, res);
 
-  throwIfNotAllowed(user, 'team_api_key', 'read');
+  throwIfNotAllowed(req, res, 'team_api_key', 'read');
 
   const apiKeys = await fetchApiKeys(user.team.id, user.id);
 
@@ -56,7 +56,7 @@ const handleGET = async (req: NextApiRequest, res: NextApiResponse) => {
 const handlePOST = async (req: NextApiRequest, res: NextApiResponse) => {
   const user = await getCurrentUserWithTeam(req, res);
 
-  throwIfNotAllowed(user, 'team_api_key', 'create');
+  throwIfNotAllowed(req, res, 'team_api_key', 'create');
 
   const { name } = validateWithSchema(createApiKeySchema, req.body);
 

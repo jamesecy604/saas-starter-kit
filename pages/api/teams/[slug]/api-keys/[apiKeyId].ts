@@ -41,7 +41,7 @@ export default async function handler(
 const handleDELETE = async (req: NextApiRequest, res: NextApiResponse) => {
   const user = await getCurrentUserWithTeam(req, res);
 
-  throwIfNotAllowed(user, 'team_api_key', 'delete');
+  throwIfNotAllowed(req, res, 'team_api_key', 'delete');
 
   const { apiKeyId } = validateWithSchema(deleteApiKeySchema, req.query);
 

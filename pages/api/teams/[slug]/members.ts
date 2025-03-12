@@ -55,7 +55,7 @@ export default async function handler(
 // Get members of a team
 const handleGET = async (req: NextApiRequest, res: NextApiResponse) => {
   const teamMember = await throwIfNoTeamAccess(req, res);
-  throwIfNotAllowed(teamMember, 'team_member', 'read');
+  throwIfNotAllowed(req, res, 'team_member', 'read');
 
   const members = await getTeamMembers(teamMember.team.slug);
 
@@ -67,7 +67,7 @@ const handleGET = async (req: NextApiRequest, res: NextApiResponse) => {
 // Delete the member from the team
 const handleDELETE = async (req: NextApiRequest, res: NextApiResponse) => {
   const teamMember = await throwIfNoTeamAccess(req, res);
-  throwIfNotAllowed(teamMember, 'team_member', 'delete');
+  throwIfNotAllowed(req, res, 'team_member', 'delete');
 
   const { memberId } = validateWithSchema(
     deleteMemberSchema,
@@ -95,7 +95,7 @@ const handleDELETE = async (req: NextApiRequest, res: NextApiResponse) => {
 // Leave a team
 const handlePUT = async (req: NextApiRequest, res: NextApiResponse) => {
   const teamMember = await throwIfNoTeamAccess(req, res);
-  throwIfNotAllowed(teamMember, 'team', 'leave');
+  throwIfNotAllowed(req, res, 'team', 'leave');
 
   /*
   Aggregate  (cost=64.62..64.63 rows=1 width=8) (actual time=0.222..0.223 rows=1 loops=1)
@@ -149,7 +149,7 @@ Execution Time: 0.057 ms
 // Update the role of a member
 const handlePATCH = async (req: NextApiRequest, res: NextApiResponse) => {
   const teamMember = await throwIfNoTeamAccess(req, res);
-  throwIfNotAllowed(teamMember, 'team_member', 'update');
+  throwIfNotAllowed(req, res, 'team_member', 'update');
 
   const { memberId, role } = validateWithSchema(
     updateMemberSchema,

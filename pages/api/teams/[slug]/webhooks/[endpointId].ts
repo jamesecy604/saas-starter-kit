@@ -48,7 +48,7 @@ export default async function handler(
 // Get a Webhook
 const handleGET = async (req: NextApiRequest, res: NextApiResponse) => {
   const teamMember = await throwIfNoTeamAccess(req, res);
-  throwIfNotAllowed(teamMember, 'team_webhook', 'read');
+  throwIfNotAllowed(req, res, 'team_webhook', 'read');
 
   const { endpointId } = validateWithSchema(
     getWebhookSchema,
@@ -73,7 +73,7 @@ const handleGET = async (req: NextApiRequest, res: NextApiResponse) => {
 // Update a Webhook
 const handlePUT = async (req: NextApiRequest, res: NextApiResponse) => {
   const teamMember = await throwIfNoTeamAccess(req, res);
-  throwIfNotAllowed(teamMember, 'team_webhook', 'update');
+  throwIfNotAllowed(req, res, 'team_webhook', 'update');
 
   const { name, url, eventTypes, endpointId } = validateWithSchema(
     updateWebhookEndpointSchema,

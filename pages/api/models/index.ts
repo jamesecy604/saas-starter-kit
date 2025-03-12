@@ -1,11 +1,18 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { withApiAuth } from '@/lib/auth/withApiAuth';
-import { withApiAccessControl } from '@/lib/permissions/withApiAccessControl';
 import { prisma } from '@/lib/prisma';
+import { checkAccess , getCachedSession} from '@/lib/permissions';
 
 import { NextApiHandler } from 'next';
 
 const handler: NextApiHandler = async (req, res) => {
+    
+  // Check access for model_management resource
+  const session = await getCachedSession(req, res);
+  const accessResult = await checkAccess(session, 'model_management', 'read');
+  if (!accessResult.allowed) {
+    return res.status(accessResult.status).json({ message: accessResult.message });
+  }
+
   switch (req.method) {
     case 'GET':
       return handleGetModels(req, res);
@@ -16,12 +23,7 @@ const handler: NextApiHandler = async (req, res) => {
   }
 }
 
-export default withApiAuth(
-  withApiAccessControl(
-    ['SYSADMIN'],
-    handler
-  )
-);
+export default handler;
 
 async function handleGetModels(req: NextApiRequest, res: NextApiResponse) {
   try {

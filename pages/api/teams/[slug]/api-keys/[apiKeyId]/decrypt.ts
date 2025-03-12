@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth/next';
 import { getAuthOptions } from '@/lib/nextAuth';
 import { getDecryptedApiKey } from '@/models/apiKey';
 import { getTeam } from '@/models/team';
-import { permissions } from '@/lib/permissions';
+import { checkAccess , getCachedSession} from '@/lib/permissions';
 
 export default async function handler(
   req: NextApiRequest,
@@ -14,7 +14,8 @@ export default async function handler(
   }
 
   try {
-    const session = await getServerSession(req, res, getAuthOptions(req, res));
+    const session = await getCachedSession(req, res);
+    //const session = await getServerSession(req, res, getAuthOptions(req, res));
     if (!session?.user?.id) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -27,11 +28,9 @@ export default async function handler(
     // Verify team access
     const team = await getTeam({ slug });
     // Check if user has permission to read API keys
-    const userRole = team.members.find(m => m.userId === session.user.id)?.role;
-    if (!userRole || !permissions[userRole].some(p => 
-      p.resource === 'team_api_key' && 
-      (p.actions === '*' || p.actions.includes('read'))
-    )) {
+   
+    const { allowed } = await checkAccess(session, 'team_api_key', 'read');
+    if (!allowed) {
       return res.status(403).json({ error: 'Forbidden' });
     }
 

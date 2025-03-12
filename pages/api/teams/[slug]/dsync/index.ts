@@ -46,7 +46,7 @@ export default async function handler(
 const handleGET = async (req: NextApiRequest, res: NextApiResponse) => {
   const teamMember = await throwIfNoTeamAccess(req, res);
 
-  throwIfNotAllowed(teamMember, 'team_dsync', 'read');
+  throwIfNotAllowed(req, res, 'team_dsync', 'read');
 
   const connections = await dsync.getConnections({
     tenant: teamMember.teamId,
@@ -58,7 +58,7 @@ const handleGET = async (req: NextApiRequest, res: NextApiResponse) => {
 const handlePOST = async (req: NextApiRequest, res: NextApiResponse) => {
   const teamMember = await throwIfNoTeamAccess(req, res);
 
-  throwIfNotAllowed(teamMember, 'team_dsync', 'create');
+  throwIfNotAllowed(req, res, 'team_dsync', 'create');
 
   const { body } = req;
 

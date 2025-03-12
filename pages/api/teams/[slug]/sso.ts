@@ -57,7 +57,7 @@ export default async function handler(
 const handleGET = async (req: NextApiRequest, res: NextApiResponse) => {
   const teamMember = await throwIfNoTeamAccess(req, res);
 
-  throwIfNotAllowed(teamMember, 'team_sso', 'read');
+  throwIfNotAllowed(req, res, 'team_sso', 'read');
 
   if ('clientID' in req.query) {
     await throwIfNoAccessToConnection({
@@ -80,7 +80,7 @@ const handleGET = async (req: NextApiRequest, res: NextApiResponse) => {
 const handlePOST = async (req: NextApiRequest, res: NextApiResponse) => {
   const teamMember = await throwIfNoTeamAccess(req, res);
 
-  throwIfNotAllowed(teamMember, 'team_sso', 'create');
+  throwIfNotAllowed(req, res, 'team_sso', 'create');
 
   const connection = await sso.createConnection({
     ...req.body,
@@ -103,7 +103,7 @@ const handlePOST = async (req: NextApiRequest, res: NextApiResponse) => {
 const handlePATCH = async (req: NextApiRequest, res: NextApiResponse) => {
   const teamMember = await throwIfNoTeamAccess(req, res);
 
-  throwIfNotAllowed(teamMember, 'team_sso', 'create');
+  throwIfNotAllowed(req, res, 'team_sso', 'create');
 
   await throwIfNoAccessToConnection({
     teamId: teamMember.teamId,
@@ -129,7 +129,7 @@ const handlePATCH = async (req: NextApiRequest, res: NextApiResponse) => {
 const handleDELETE = async (req: NextApiRequest, res: NextApiResponse) => {
   const teamMember = await throwIfNoTeamAccess(req, res);
 
-  throwIfNotAllowed(teamMember, 'team_sso', 'delete');
+  throwIfNotAllowed(req, res, 'team_sso', 'delete');
 
   await throwIfNoAccessToConnection({
     teamId: teamMember.teamId,

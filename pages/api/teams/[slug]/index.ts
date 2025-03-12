@@ -49,7 +49,7 @@ export default async function handler(
 const handleGET = async (req: NextApiRequest, res: NextApiResponse) => {
   const user = await getCurrentUserWithTeam(req, res);
 
-  throwIfNotAllowed(user, 'team', 'read');
+  throwIfNotAllowed(req, res, 'team', 'read');
 
   const team = await getTeam({ id: user.team.id });
 
@@ -62,7 +62,7 @@ const handleGET = async (req: NextApiRequest, res: NextApiResponse) => {
 const handlePUT = async (req: NextApiRequest, res: NextApiResponse) => {
   const user = await getCurrentUserWithTeam(req, res);
 
-  throwIfNotAllowed(user, 'team', 'update');
+  throwIfNotAllowed(req, res, 'team', 'update');
 
   const { name, slug, domain } = validateWithSchema(updateTeamSchema, req.body);
 
@@ -117,7 +117,7 @@ const handleDELETE = async (req: NextApiRequest, res: NextApiResponse) => {
 
   const user = await getCurrentUserWithTeam(req, res);
 
-  throwIfNotAllowed(user, 'team', 'delete');
+  throwIfNotAllowed(req, res, 'team', 'delete');
 
   await deleteTeam({ id: user.team.id });
 

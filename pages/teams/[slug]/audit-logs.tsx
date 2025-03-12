@@ -8,7 +8,7 @@ import { getSession } from '@/lib/session';
 import useCanAccess from 'hooks/useCanAccess';
 import useTeam from 'hooks/useTeam';
 import { getTeamMember } from 'models/team';
-import { throwIfNotAllowed } from 'models/user';
+import { checkPageAccess } from '@/lib/permissions';
 import { GetServerSidePropsContext } from 'next';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
@@ -84,7 +84,20 @@ export async function getServerSideProps(context: GetServerSidePropsContext) {
   );
 
   try {
-    throwIfNotAllowed(teamMember, 'team_audit_log', 'read');
+    const accessCheck = await checkPageAccess(session, 'team_audit_log', 'read');
+    if (!accessCheck.allowed) {
+      return {
+        props: {
+          ...(locale ? await serverSideTranslations(locale, ['common']) : {}),
+          error: {
+            message: accessCheck.message,
+          },
+          auditLogToken: null,
+          retracedHost: null,
+          teamFeatures: env.teamFeatures,
+        },
+      };
+    }
 
     const auditLogToken = await getViewerToken(
       teamMember.team.id,

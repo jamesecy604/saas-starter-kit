@@ -49,7 +49,7 @@ export default async function handler(
 const handleGET = async (req: NextApiRequest, res: NextApiResponse) => {
   const teamMember = await throwIfNoTeamAccess(req, res);
 
-  throwIfNotAllowed(teamMember, 'team_dsync', 'read');
+  throwIfNotAllowed(req, res, 'team_dsync', 'read');
 
   const directoryId = req.query.directoryId as string;
 
@@ -66,7 +66,7 @@ const handleGET = async (req: NextApiRequest, res: NextApiResponse) => {
 const handlePATCH = async (req: NextApiRequest, res: NextApiResponse) => {
   const teamMember = await throwIfNoTeamAccess(req, res);
 
-  throwIfNotAllowed(teamMember, 'team_dsync', 'read');
+  throwIfNotAllowed(req, res, 'team_dsync', 'read');
 
   await throwIfNoAccessToDirectory({
     teamId: teamMember.team.id,
@@ -83,7 +83,7 @@ const handlePATCH = async (req: NextApiRequest, res: NextApiResponse) => {
 const handleDELETE = async (req: NextApiRequest, res: NextApiResponse) => {
   const teamMember = await throwIfNoTeamAccess(req, res);
 
-  throwIfNotAllowed(teamMember, 'team_dsync', 'delete');
+  throwIfNotAllowed(req, res, 'team_dsync', 'delete');
 
   await throwIfNoAccessToDirectory({
     teamId: teamMember.team.id,
