@@ -1,7 +1,13 @@
 import { Role } from '@prisma/client';
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { getSession } from './session';
 import type { Session } from 'next-auth';
+
+let getSession: typeof import('./session').getSession;
+
+if (typeof window === 'undefined') {
+  // Only import session-related code on server
+  getSession = require('./session').getSession;
+}
 
 export { Role };
 
@@ -168,9 +174,18 @@ function checkAccessCore(
 }
 
 export async function getCachedSession(
-  req: NextApiRequest,
-  res: NextApiResponse
+  req: NextApiRequest | null,
+  res: NextApiResponse | null
 ): Promise<Session | null> {
+  if (typeof window !== 'undefined') {
+    // Client-side - return null session
+    return null;
+  }
+
+  if (!req || !res || !getSession) {
+    return null;
+  }
+
   const cacheKey = req.headers.authorization || req.cookies['next-auth.session-token'];
   let session;
   
