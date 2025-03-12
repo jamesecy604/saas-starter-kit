@@ -12,6 +12,7 @@ declare module 'next-auth' {
       systemRole?: 'SYSADMIN' | 'OWNER' | 'ADMIN' | 'MEMBER';
     };
     accessToken?: string;
+    redirectPath?: string;
   }
 
   interface Error {

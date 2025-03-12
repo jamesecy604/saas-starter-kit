@@ -46,3 +46,7 @@ export const maxLengthPolicies = {
   invitationId: 64,
   sendViaEmail: 10,
 };
+
+export function cn(...classes: (string | boolean | undefined | null)[]) {
+  return classes.filter(Boolean).join(' ');
+}

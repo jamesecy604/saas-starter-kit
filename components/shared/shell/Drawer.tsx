@@ -55,7 +55,7 @@ const Drawer = ({ sidebarOpen, setSidebarOpen }: DrawerProps) => {
               </div>
               <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-white dark:bg-black px-6 pb-4">
                 <Brand />
-                {role !== 'MEMBER' && <TeamDropdown />}
+          {role !== 'MEMBER' && role !== 'SYSADMIN' && <TeamDropdown />}
                 <Navigation />
               </div>
             </div>
@@ -66,7 +66,7 @@ const Drawer = ({ sidebarOpen, setSidebarOpen }: DrawerProps) => {
       <div className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-64 lg:flex-col">
         <div className="flex grow flex-col gap-y-5 overflow-y-auto border-r border-gray-200 px-6">
           <Brand />
-          {role !== 'MEMBER' && <TeamDropdown />}
+          {role !== 'MEMBER' && role !== 'SYSADMIN' && <TeamDropdown />}
           <Navigation />
         </div>
       </div>

@@ -13,7 +13,7 @@ import {
   isInvitationExpired,
 } from 'models/invitation';
 import { addTeamMember } from 'models/team';
-import { throwIfNoTeamAccess } from '@/lib/permissions/withAccessControl';
+import { getTeamMember } from 'models/teamMember';
 import { throwIfNotAllowed } from 'models/user';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { recordMetric } from '@/lib/metrics';
@@ -65,7 +65,19 @@ export default async function handler(
 // Invite a user to a team
 const handlePOST = async (req: NextApiRequest, res: NextApiResponse) => {
   console.log("req:", req);
-  const teamMember = await throwIfNoTeamAccess(req, res);
+  const session = await getServerSession(req, res, getAuthOptions(req, res));
+  if (!session?.user) {
+    throw new ApiError(401, 'Unauthorized');
+  }
+
+  const teamMember = await getTeamMember({
+    teamId: req.query.slug as string,
+    userId: session.user.id
+  });
+
+  if (!teamMember) {
+    throw new ApiError(403, 'You do not have access to this team');
+  }
   throwIfNotAllowed(teamMember, 'team_invitation', 'create');
 
   const { email, role, sentViaEmail, domains } = validateWithSchema(
@@ -171,8 +183,25 @@ const handleGET = async (req: NextApiRequest, res: NextApiResponse) => {
     throw new ApiError(400, 'Missing required query parameters');
   }
 
-  const teamMember = await throwIfNoTeamAccess(req, res);
+  const session = await getServerSession(req, res, getAuthOptions(req, res));
+  if (!session?.user) {
+    throw new ApiError(401, 'Unauthorized');
+  }
+
+  const teamMember = await getTeamMember({
+    teamId: req.query.slug as string,
+    userId: session.user.id
+  });
+
+  if (!teamMember) {
+    throw new ApiError(403, 'You do not have access to this team');
+  }
   throwIfNotAllowed(teamMember, 'team_invitation', 'read');
+
+  // Validate team access
+  if (teamMember.teamId !== req.query.slug) {
+    throw new ApiError(403, 'You do not have access to this team');
+  }
 
   const { sentViaEmail: validatedSentViaEmail } = validateWithSchema(
     getInvitationsSchema,
@@ -191,7 +220,19 @@ const handleGET = async (req: NextApiRequest, res: NextApiResponse) => {
 
 // Delete an invitation
 const handleDELETE = async (req: NextApiRequest, res: NextApiResponse) => {
-  const teamMember = await throwIfNoTeamAccess(req, res);
+  const session = await getServerSession(req, res, getAuthOptions(req, res));
+  if (!session?.user) {
+    throw new ApiError(401, 'Unauthorized');
+  }
+
+  const teamMember = await getTeamMember({
+    teamId: req.query.slug as string,
+    userId: session.user.id
+  });
+
+  if (!teamMember) {
+    throw new ApiError(403, 'You do not have access to this team');
+  }
   throwIfNotAllowed(teamMember, 'team_invitation', 'delete');
 
   const { id } = validateWithSchema(
@@ -202,7 +243,7 @@ const handleDELETE = async (req: NextApiRequest, res: NextApiResponse) => {
   const invitation = await getInvitation({ id });
 
   if (
-    invitation.invitedBy != teamMember.user.id ||
+    invitation.invitedBy != teamMember.userId ||
     invitation.team.id != teamMember.teamId
   ) {
     throw new ApiError(

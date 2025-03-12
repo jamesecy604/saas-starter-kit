@@ -73,8 +73,10 @@ const UserNavigation = ({ activePathname }: NavigationProps) => {
         ]
       : []),
   ];
-
-  return <NavigationItems menus={menus} />;
+  if (role) {
+    return <NavigationItems menus={menus} />;
+  }
+  
 };
 
 export default UserNavigation;

@@ -318,11 +318,11 @@ export const getAuthOptions = (
 
           await linkAccount(newUser, account);
 
-          if (isIdpLogin && user) {
+          if (isIdpLogin && user && user.systemRole !== 'SYSADMIN') {
             await linkToTeam(user as unknown as Profile, newUser.id);
           }
 
-          if (account.provider === 'boxyhq-saml' && profile) {
+          if (account.provider === 'boxyhq-saml' && profile && user.systemRole !== 'SYSADMIN') {
             await linkToTeam(profile, newUser.id);
           }
 
@@ -371,7 +371,6 @@ export const getAuthOptions = (
             });
       
             if (existingUser) {
-              // Check if the user is a sysAdmin
               const isSysAdmin = existingUser.systemRole === 'SYSADMIN';
       
               session.user = {
@@ -379,13 +378,18 @@ export const getAuthOptions = (
                 name: existingUser.name,
                 email: existingUser.email,
                 roles: isSysAdmin
-                  ? [{ teamId: null, role: 'SYSADMIN' }] // sysAdmin role
+                  ? [{ teamId: null, role: 'SYSADMIN' }]
                   : existingUser.teamMembers.map(member => ({
                       teamId: member.team.id,
                       role: member.role,
-                    })), // Non-sysAdmin roles
+                    })),
                 systemRole: existingUser.systemRole,
               };
+              
+              // Set redirect path for sysadmins
+              if (isSysAdmin) {
+                 session.redirectPath = '/dashboard';
+              }
             } else {
               return {
                 user: {},
