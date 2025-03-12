@@ -1,13 +1,5 @@
 import { Role } from '@prisma/client';
-import type { NextApiRequest, NextApiResponse } from 'next';
 import type { Session } from 'next-auth';
-
-let getSession: typeof import('./session').getSession;
-
-if (typeof window === 'undefined') {
-  // Only import session-related code on server
-  getSession = require('./session').getSession;
-}
 
 export { Role };
 
@@ -24,7 +16,15 @@ export type Resource =
   | 'team_payments'
   | 'team_api_key'
   | 'model_management';
-  
+
+export type AccessCheckResult = {
+  allowed: boolean;
+  message: string;
+  status: number;
+  resource: Resource;
+  action: Action;
+};
+
 type RolePermissions = {
   [role in RoleType]: Permission[];
 };
@@ -81,14 +81,6 @@ export const availableRoles: RoleConfig[] = [
   }
 ];
 
-export type AccessCheckResult = {
-  allowed: boolean;
-  message: string;
-  status: number;
-  resource: Resource;
-  action: Action;
-};
-
 export function hasPermission(role: Role, resource: Resource, action: Action): boolean {
   const roleConfig = availableRoles.find(r => r.id === role);
   if (!roleConfig) return false;
@@ -108,15 +100,12 @@ export function hasPermission(role: Role, resource: Resource, action: Action): b
   return false;
 }
 
-// Cache session for 5 minutes
-const sessionCache = new Map<string, { session: any, timestamp: number }>();
-
-function checkAccessCore(
+export async function checkPageAccess(
   session: Session | null,
   resource: Resource,
   action: Action,
   teamSlug?: string
-): AccessCheckResult {
+): Promise<AccessCheckResult> {
   if (!session?.user || !session.user.systemRole) {
     return {
       allowed: false,
@@ -171,72 +160,4 @@ function checkAccessCore(
     resource,
     action
   };
-}
-
-export async function getCachedSession(
-  req: NextApiRequest | null,
-  res: NextApiResponse | null
-): Promise<Session | null> {
-  if (typeof window !== 'undefined') {
-    // Client-side - return null session
-    return null;
-  }
-
-  if (!req || !res || !getSession) {
-    return null;
-  }
-
-  const cacheKey = req.headers.authorization || req.cookies['next-auth.session-token'];
-  let session;
-  
-  // Check cache first
-  if (cacheKey && sessionCache.has(cacheKey)) {
-    const cached = sessionCache.get(cacheKey)!;
-    // If cache is fresh (less than 5 minutes old)
-    if (Date.now() - cached.timestamp < 300000) {
-      session = cached.session;
-    }
-  }
-  
-  // If no valid cache, fetch fresh session
-  if (!session) {
-    session = await getSession(req, res);
-    if (cacheKey) {
-      sessionCache.set(cacheKey, {
-        session,
-        timestamp: Date.now()
-      });
-    }
-  }
-  
-  return session;
-}
-
-export async function checkAccess(
-  session: Session | null,
-  resource: Resource,
-  action: Action,
-  teamSlug?: string
-): Promise<AccessCheckResult> {
-  try {
-    return checkAccessCore(session, resource, action, teamSlug);
-  } catch (error) {
-    console.error('Error checking access:', error);
-    return {
-      allowed: false,
-      message: 'Internal server error',
-      status: 500,
-      resource,
-      action
-    };
-  }
-}
-
-export async function checkPageAccess(
-  session: Session | null,
-  resource: Resource,
-  action: Action,
-  teamSlug?: string
-): Promise<AccessCheckResult> {
-  return checkAccessCore(session, resource, action, teamSlug);
 }

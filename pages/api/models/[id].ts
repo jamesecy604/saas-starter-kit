@@ -1,7 +1,8 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { withApiAuth } from '@/lib/auth/withApiAuth';
 import { prisma } from '@/lib/prisma';
-import { checkAccess , getCachedSession} from '@/lib/permissions';
+import { checkAccess } from '@/lib/server/permissions';
+import { getCachedSession } from '@/lib/server/session';
 
 import { NextApiHandler } from 'next';
 

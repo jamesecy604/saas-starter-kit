@@ -1,5 +1,7 @@
 import { ApiError } from '@/lib/errors';
-import { Action, Resource, checkAccess, getCachedSession} from '@/lib/permissions';
+import { Action, Resource } from '@/lib/permissions';
+import { checkAccess } from '@/lib/server/permissions';
+import { getCachedSession } from '@/lib/server/session';
 import { prisma } from '@/lib/prisma';
 import type { Session } from 'next-auth';
 import type { NextApiRequest, NextApiResponse, NextPageContext } from 'next';
